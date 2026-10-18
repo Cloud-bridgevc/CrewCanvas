@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: CrewCanvas — PostgreSQL (Aurora Serverless v2), S3 evidence bucket, Bedrock access, notification Lambda.
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  AlertEmail:
+    Type: String
+    Description: Address subscribed to readiness alerts (confirm the SNS email).
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-opus-5-5
+
+Resources:
+  # ---------- Data: PostgreSQL ----------
+  DbSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub crewcanvas/${Stage}/db
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"crewcanvas"}'
+        GenerateStringKey: password
+        ExcludePunctuation: true
+        PasswordLength: 32
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: CrewCanvas private subnets
+      SubnetIds: !Ref PrivateSubnetIds
+
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: CrewCanvas PostgreSQL
+      VpcId: !Ref VpcId
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: CrewCanvas app & Lambda
+      VpcId: !Ref VpcId
+
+  DbIngressFromApp:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DbSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref AppSecurityGroup
+
+  DbCluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: "16.4"
+      DatabaseName: crewcanvas
+      MasterUsername: !Sub "{{resolve:secretsmanager:${DbSecret}:SecretString:username}}"
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${DbSecret}:SecretString:password}}"
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VpcSecurityGroupIds: [!Ref DbSecurityGroup]
+      StorageEncrypted: true
+      BackupRetentionPeriod: 14
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0.5
+        MaxCapacity: 8
+
+  DbInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref DbCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+
+  # ---------- Evidence storage: S3 ----------
+  EvidenceKey:
+    Type: AWS::KMS::Key
+    Properties:
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root" }
+            Action: kms:*
+            Resource: "*"
+
+  EvidenceBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub crewcanvas-evidence-${Stage}-${AWS::AccountId}
+      VersioningConfiguration: { Status: Enabled }
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref EvidenceKey
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [PUT, GET]
+            AllowedOrigins: ["*"] # tighten to the app domain per stage
+            AllowedHeaders: ["*"]
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: archive-closed-projects
+            Status: Enabled
+            Transitions:
+              - StorageClass: GLACIER_IR
+                TransitionInDays: 365
+
+  # ---------- Notifications ----------
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub crewcanvas-readiness-alerts-${Stage}
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  NotificationsFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [lambda/notifications/handler.ts]
+        Target: node22
+        Minify: true
+        External: ["pg-native"]
+    Properties:
+      CodeUri: ../
+      Handler: handler.handler
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Timeout: 60
+      MemorySize: 512
+      VpcConfig:
+        SecurityGroupIds: [!Ref AppSecurityGroup]
+        SubnetIds: !Ref PrivateSubnetIds
+      Environment:
+        Variables:
+          NOTIFY_TOPIC_ARN: !Ref AlertsTopic
+          DB_SECRET_ARN: !Ref DbSecret
+          DB_HOST: !GetAtt DbCluster.Endpoint.Address
+          AS_OF_DATE: today
+      Policies:
+        - SNSPublishMessagePolicy: { TopicName: !GetAtt AlertsTopic.TopicName }
+        - AWSSecretsManagerGetSecretValuePolicy: { SecretArn: !Ref DbSecret }
+      Events:
+        WeekdayMorning:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(30 5 ? * MON-SAT *)
+            ScheduleExpressionTimezone: America/Los_Angeles
+        ChecklistChanged:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source: [crewcanvas.app]
+              detail-type: [checklist.changed, approval.revoked]
+
+  # ---------- App role: Bedrock + S3 ----------
+  AppRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: [tasks.apprunner.amazonaws.com, ecs-tasks.amazonaws.com] }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: crewcanvas-app
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream, bedrock-mantle:*]
+                Resource: "*"
+              - Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub ${EvidenceBucket.Arn}/*
+              - Effect: Allow
+                Action: [kms:GenerateDataKey, kms:Decrypt]
+                Resource: !GetAtt EvidenceKey.Arn
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref DbSecret
+              - Effect: Allow
+                Action: events:PutEvents
+                Resource: !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/default
+
+Outputs:
+  EvidenceBucketName:
+    Value: !Ref EvidenceBucket
+  DbEndpoint:
+    Value: !GetAtt DbCluster.Endpoint.Address
+  AlertsTopicArn:
+    Value: !Ref AlertsTopic
+  AppRoleArn:
+    Value: !GetAtt AppRole.Arn
+  BedrockModelId:
+    Value: !Ref BedrockModelId
