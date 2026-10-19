@@ -5,15 +5,16 @@
   "description": "CrewCanvas — AI-native construction crew coordination and site-readiness platform",
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build",
+    "build": "opennextjs-cloudflare build",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:up": "docker compose up -d db",
     "db:migrate": "psql \"$DATABASE_URL\" -f db/schema.sql",
     "db:seed": "tsx db/seed.ts",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
+    "deploy": "opennextjs-cloudflare deploy",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "build:next": "next build"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "^0.35.0",
