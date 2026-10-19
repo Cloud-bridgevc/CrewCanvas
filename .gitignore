@@ -8,3 +8,6 @@ infra/lambda/**/dist
 .aws-sam
 .claude/
 .DS_Store
+.open-next
+.wrangler
+.dev.vars*
