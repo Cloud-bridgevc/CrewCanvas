@@ -58,6 +58,7 @@ export async function syncDemoRequest(r: Omit<DemoRequest, "id" | "createdAt" | 
       pipeline: process.env.HUBSPOT_PIPELINE_ID ?? "default",
       dealstage: process.env.HUBSPOT_DEALSTAGE_ID ?? "appointmentscheduled",
       crewcanvas_segment: seg.segment,
+      ...(r.plan && r.plan !== "unsure" ? { crewcanvas_plan: r.plan[0].toUpperCase() + r.plan.slice(1) } : {}),
       description: r.message ?? "",
     },
   });

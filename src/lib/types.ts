@@ -144,6 +144,7 @@ export interface DemoRequest {
   company: string;
   companyType: "general_contractor" | "subcontractor" | "owner_developer" | "enterprise";
   role?: string;
+  plan?: "project" | "contractor" | "enterprise" | "unsure";
   activeProjects?: string;
   message?: string;
   createdAt: string;

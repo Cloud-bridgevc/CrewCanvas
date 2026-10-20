@@ -124,9 +124,9 @@ export const postgresRepository: Repository = {
   async addDemoRequest(input) {
     const id = newId("dr");
     const { rows } = await pool().query(
-      `INSERT INTO demo_requests (id, name, email, company, company_type, role, active_projects, message, hubspot_synced)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING created_at`,
-      [id, input.name, input.email, input.company, input.companyType, input.role ?? null, input.activeProjects ?? null, input.message ?? null, input.hubspotSynced],
+      `INSERT INTO demo_requests (id, name, email, company, company_type, role, plan, active_projects, message, hubspot_synced)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING created_at`,
+      [id, input.name, input.email, input.company, input.companyType, input.role ?? null, input.plan ?? null, input.activeProjects ?? null, input.message ?? null, input.hubspotSynced],
     );
     return { id, createdAt: ts(rows[0].created_at)!, ...input };
   },

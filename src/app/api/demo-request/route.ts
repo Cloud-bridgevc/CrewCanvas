@@ -4,6 +4,7 @@ import { syncDemoRequest } from "@/lib/hubspot";
 import type { DemoRequest } from "@/lib/types";
 
 const TYPES: DemoRequest["companyType"][] = ["general_contractor", "subcontractor", "owner_developer", "enterprise"];
+const PLANS: NonNullable<DemoRequest["plan"]>[] = ["project", "contractor", "enterprise", "unsure"];
 const str = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 export async function POST(req: Request) {
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
     company: str(b.company),
     companyType: b.companyType as DemoRequest["companyType"],
     role: str(b.role) || undefined,
+    plan: PLANS.includes(b.plan) ? (b.plan as DemoRequest["plan"]) : undefined,
     activeProjects: str(b.activeProjects, 20) || undefined,
     message: str(b.message, 2000) || undefined,
   };

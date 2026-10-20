@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DemoRequestForm } from "@/components/site/DemoRequestForm";
+import { PlanButton, type PlanChoice } from "@/components/site/PlanButton";
 import { ReadinessDemo } from "@/components/site/ReadinessDemo";
 import { MobileMenu } from "@/components/MobileMenu";
 import { Logo } from "@/components/ui";
@@ -39,10 +40,21 @@ const USE_CASES = [
   { role: "Operations leaders", title: "See readiness risk across every job, not just the loud ones.", points: ["Portfolio-wide crew double-booking", "Consistent readiness standards", "Approval audit trail per package"] },
 ];
 
+export const metadata = { alternates: { canonical: "/" } };
+
+const NAV: [string, string][] = [["#product", "Product"], ["#use-cases", "Use cases"], ["#demo", "Live demo"], ["#pricing", "Pricing"], ["#team", "Team"]];
+
+const TEAM = [
+  { name: "King Frank", title: "Founder & CEO" },
+  { name: "Donald Achong", title: "Co-Founder & CTO" },
+];
+
+const LINKEDIN_URL = "https://www.linkedin.com/company/crewcanvas/";
+
 const PLANS = [
-  { name: "Project", price: "$390", unit: "per active project / month", desc: "For a single job that needs tighter trade coordination.", features: ["Unlimited work packages & checklists", "Conflict detection & risk ranking", "Daily coordination report", "Subcontractor guest access"], cta: "Start with one project" },
-  { name: "Contractor", price: "$2,400", unit: "per month · up to 10 active projects", desc: "For general contractors running a multi-project portfolio.", features: ["Everything in Project", "Portfolio crew availability", "AI evidence summaries & recommendations", "HubSpot & scheduling integrations", "Priority onboarding"], cta: "Request a demo", featured: true },
-  { name: "Enterprise", price: "Custom", unit: "annual agreement", desc: "For enterprise builders with regional operations and IT requirements.", features: ["Everything in Contractor", "SSO, audit export & data residency", "Dedicated AWS deployment option", "Custom readiness templates by region", "Named customer success team"], cta: "Talk to sales" },
+  { name: "Project", price: "$390", unit: "per active project / month", choice: { plan: "project" } as PlanChoice, desc: "For a single job that needs tighter trade coordination.", features: ["Unlimited work packages & checklists", "Conflict detection & risk ranking", "Daily coordination report", "Subcontractor guest access"], cta: "Start with one project" },
+  { name: "Contractor", price: "$2,400", unit: "per month · up to 10 active projects", choice: { plan: "contractor", companyType: "general_contractor" } as PlanChoice, desc: "For general contractors running a multi-project portfolio.", features: ["Everything in Project", "Portfolio crew availability", "AI evidence summaries & recommendations", "HubSpot & scheduling integrations", "Priority onboarding"], cta: "Request a demo", featured: true },
+  { name: "Enterprise", price: "Custom", unit: "annual agreement", choice: { plan: "enterprise", companyType: "enterprise" } as PlanChoice, desc: "For enterprise builders with regional operations and IT requirements.", features: ["Everything in Contractor", "SSO, audit export & data residency", "Dedicated AWS deployment option", "Custom readiness templates by region", "Named customer success team"], cta: "Talk to sales" },
 ];
 
 export default function Home() {
@@ -57,6 +69,7 @@ export default function Home() {
             <a href="#use-cases" className="hover:text-white">Use cases</a>
             <a href="#demo" className="hover:text-white">Live demo</a>
             <a href="#pricing" className="hover:text-white">Pricing</a>
+            <a href="#team" className="hover:text-white">Team</a>
           </nav>
           <div className="flex items-center gap-2">
             <Link href="/app" className="hidden rounded-lg px-3 py-2 text-sm font-medium text-char-200 hover:text-white sm:block">Open dashboard</Link>
@@ -64,7 +77,7 @@ export default function Home() {
             <div className="md:hidden">
               <MobileMenu dark top="top-16" panelClassName="border-b border-char-800 bg-char-900">
                 <nav className="flex flex-col px-4 py-3 text-base text-char-200">
-                  {[["#product", "Product"], ["#use-cases", "Use cases"], ["#demo", "Live demo"], ["#pricing", "Pricing"]].map(([h, l]) => (
+                  {NAV.map(([h, l]) => (
                     <a key={h} href={h} className="border-b border-char-800 py-3.5 font-medium hover:text-white">{l}</a>
                   ))}
                   <Link href="/app" className="mt-3 rounded-lg border border-char-600 py-3 text-center font-semibold text-white">Open dashboard</Link>
@@ -283,10 +296,37 @@ export default function Home() {
                 <ul className="mt-6 flex-1 space-y-2.5 text-sm">
                   {p.features.map((f) => <li key={f} className="flex gap-2.5"><Check light={p.featured} />{f}</li>)}
                 </ul>
-                <a href="#request" className={`mt-8 rounded-lg px-4 py-2.5 text-center text-sm font-bold ${p.featured ? "bg-safety-500 text-white hover:bg-safety-600" : "border border-char-300 text-char-800 hover:border-char-500"}`}>{p.cta}</a>
+                <PlanButton choice={p.choice} className={`mt-8 rounded-lg px-4 py-2.5 text-center text-sm font-bold ${p.featured ? "bg-safety-500 text-white hover:bg-safety-600" : "border border-char-300 text-char-800 hover:border-char-500"}`}>{p.cta}</PlanButton>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Team */}
+      <section id="team" className="scroll-mt-16 border-t border-char-100 bg-char-50 py-16 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-sm font-bold uppercase tracking-wider text-safety-600">Team</p>
+            <h2 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-char-900 sm:text-4xl">The people building CrewCanvas.</h2>
+            <p className="mt-4 text-lg text-char-600">We&apos;re building the coordination layer between the schedule and the field — so crews show up to work that&apos;s actually ready.</p>
+          </div>
+          <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:max-w-3xl">
+            {TEAM.map((m) => (
+              <li key={m.name} className="flex items-center gap-4 rounded-2xl border border-char-200 bg-white p-5 sm:p-6">
+                <span className="flex h-16 w-16 flex-none items-center justify-center rounded-xl bg-char-900 font-display text-xl font-extrabold text-safety-400" aria-hidden>
+                  {m.name.split(" ").map((w) => w[0]).join("")}
+                </span>
+                <div>
+                  <p className="font-display text-lg font-bold text-char-900">{m.name}</p>
+                  <p className="text-sm font-medium text-steel-600">{m.title}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-char-700 hover:text-safety-600">
+            <LinkedInIcon className="h-4 w-4" /> Follow CrewCanvas on LinkedIn
+          </a>
         </div>
       </section>
 
@@ -302,11 +342,41 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="bg-char-950 py-10 text-sm text-char-500">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Logo dark />
-          <p>Demonstration project, companies and people are fictional.</p>
-          <p>© {new Date().getFullYear()} CrewCanvas</p>
+      <footer className="bg-char-950 text-sm text-char-400">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8">
+          <div>
+            <Link href="/" aria-label="CrewCanvas home"><Logo dark /></Link>
+            <p className="mt-3 max-w-xs text-char-500">Crew coordination and site readiness for general contractors.</p>
+          </div>
+          <nav aria-label="Product">
+            <p className="text-xs font-semibold uppercase tracking-wider text-char-500">Product</p>
+            <ul className="mt-3 space-y-2">
+              <li><a href="#product" className="hover:text-white">Overview</a></li>
+              <li><a href="#demo" className="hover:text-white">Live demo</a></li>
+              <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
+              <li><Link href="/app" className="hover:text-white">Dashboard</Link></li>
+            </ul>
+          </nav>
+          <nav aria-label="Company">
+            <p className="text-xs font-semibold uppercase tracking-wider text-char-500">Company</p>
+            <ul className="mt-3 space-y-2">
+              <li><a href="#team" className="hover:text-white">Team</a></li>
+              <li><a href="#use-cases" className="hover:text-white">Use cases</a></li>
+              <li><a href="#request" className="hover:text-white">Request a demo</a></li>
+            </ul>
+          </nav>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-char-500">Follow</p>
+            <a href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer" aria-label="CrewCanvas on LinkedIn" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-char-700 px-3 py-2 text-char-200 hover:border-char-500 hover:text-white">
+              <LinkedInIcon className="h-4 w-4" /> LinkedIn
+            </a>
+          </div>
+        </div>
+        <div className="border-t border-char-800">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-5 text-xs text-char-500 sm:px-6 lg:px-8">
+            <p>© {new Date().getFullYear()} CrewCanvas · crewcanvas.site</p>
+            <p>The demo project and the companies and people in it are fictional.</p>
+          </div>
         </div>
       </footer>
     </div>
@@ -317,6 +387,14 @@ function Check({ light = false }: { light?: boolean }) {
   return (
     <svg className={`mt-0.5 h-4 w-4 flex-none ${light ? "text-safety-400" : "text-safety-600"}`} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
       <path d="M3 8.5 6.5 12 13 4.5" />
+    </svg>
+  );
+}
+
+function LinkedInIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z" />
     </svg>
   );
 }

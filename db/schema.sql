@@ -142,6 +142,7 @@ CREATE TABLE IF NOT EXISTS demo_requests (
   company          text NOT NULL,
   company_type     text NOT NULL,
   role             text,
+  plan             text CHECK (plan IN ('project','contractor','enterprise','unsure')),
   active_projects  text,
   message          text,
   created_at       timestamptz NOT NULL DEFAULT now(),
@@ -157,3 +158,6 @@ CREATE TABLE IF NOT EXISTS notifications (
   payload     jsonb NOT NULL,
   sent_at     timestamptz NOT NULL DEFAULT now()
 );
+
+-- Added after first release.
+ALTER TABLE demo_requests ADD COLUMN IF NOT EXISTS plan text;

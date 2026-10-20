@@ -1,5 +1,7 @@
 # CrewCanvas
 
+Live at **[crewcanvas.site](https://crewcanvas.site)** · [LinkedIn](https://www.linkedin.com/company/crewcanvas/)
+
 AI-native crew coordination and site-readiness platform for general contractors. It coordinates subcontractors, work dependencies, crew availability, readiness checklists and progress evidence. Readiness is grounded in verified checklist records and **human approval**. AI writes summaries and explains suggestions, but it never decides whether work can start.
 
 ## Quick start

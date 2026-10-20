@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { PLAN_EVENT, type PlanChoice } from "./PlanButton";
 
 const input = "w-full rounded-lg border border-char-600 bg-char-800 px-3 py-2.5 text-sm text-white placeholder:text-char-500 focus:border-safety-500 focus:outline-none";
 
 export function DemoRequestForm() {
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
   const [error, setError] = useState("");
+  const [plan, setPlan] = useState("");
+  const [companyType, setCompanyType] = useState("");
+
+  // Pricing buttons pre-select a plan (and company type for Enterprise).
+  useEffect(() => {
+    const onPlan = (e: Event) => {
+      const { plan, companyType } = (e as CustomEvent<PlanChoice>).detail;
+      setPlan(plan);
+      if (companyType) setCompanyType(companyType);
+      setState((s) => (s === "done" ? s : "idle"));
+    };
+    window.addEventListener(PLAN_EVENT, onPlan);
+    return () => window.removeEventListener(PLAN_EVENT, onPlan);
+  }, []);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,7 +52,7 @@ export function DemoRequestForm() {
       <label><span className="sr-only">Role</span><input name="role" placeholder="Role (e.g. Superintendent)" className={input} /></label>
       <label>
         <span className="sr-only">Company type</span>
-        <select name="companyType" required defaultValue="" className={input}>
+        <select name="companyType" required value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={input}>
           <option value="" disabled>Company type</option>
           <option value="general_contractor">General contractor</option>
           <option value="subcontractor">Subcontractor / specialty trade</option>
@@ -46,6 +61,16 @@ export function DemoRequestForm() {
         </select>
       </label>
       <label>
+        <span className="sr-only">Plan of interest</span>
+        <select name="plan" value={plan} onChange={(e) => setPlan(e.target.value)} className={input}>
+          <option value="" disabled>Plan of interest</option>
+          <option value="project">Project — $390 / project / month</option>
+          <option value="contractor">Contractor — $2,400 / month</option>
+          <option value="enterprise">Enterprise — custom</option>
+          <option value="unsure">Not sure yet</option>
+        </select>
+      </label>
+      <label className="sm:col-span-2">
         <span className="sr-only">Active projects</span>
         <select name="activeProjects" defaultValue="" className={input}>
           <option value="" disabled>Active projects</option>
